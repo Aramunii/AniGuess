@@ -563,13 +563,14 @@
                     const animeTitle = this.selectedAnime.title;
                     const emojiResults = this.guessResults.join('');
                     const hintInfo = this.hintCounts.map(count => count > 0 ? `💡${count}` : '').join('');
-                    return `Adivinhe o Personagem de Anime\n${animeTitle}\n${emojiResults}\n${hintInfo}\n${this.score}/${this.totalCharacters}`;
+                    return `Adivinhe o Personagem de Anime\n${animeTitle}\n${emojiResults}\n${hintInfo}\n${this.score}/${this.totalCharacters}\nJogue agora: https://aramunii.github.io/AniGuess/`;
                 },
                 shareResult(text) {
                     if (navigator.share) {
                         navigator.share({
                             title: 'Meu resultado no Adivinhe o Personagem de Anime',
-                            text: text
+                            text: text,
+                            url: 'https://aramunii.github.io/AniGuess/'
                         }).catch(console.error);
                     } else {
                         // Fallback para copiar para a área de transferência
