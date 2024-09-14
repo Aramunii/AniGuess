@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adivinhe o Personagem de Anime</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.19/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.0.19/dist/sweetalert2.all.min.js"></script>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin-top: 50px;
+        }
+        h1, h2 {
+            color: #4a4a4a;
+            font-weight: 600;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .btn-custom {
+            background-color: #6a5acd;
+            border-color: #6a5acd;
+            color: white;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+        }
+        .btn-custom:hover {
+            background-color: #483d8b;
+            border-color: #483d8b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btn-back {
+            background-color: #f8f9fa;
+            border-color: #6c757d;
+            color: #6c757d;
+        }
+        .btn-back:hover {
+            background-color: #e2e6ea;
+            border-color: #545b62;
+            color: #545b62;
+        }
+        .how-to-play-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            font-size: 0.9rem;
+            padding: 10px 15px;
+            border-radius: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        .how-to-play-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        .character-inputs {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .name-part {
+            display: flex;
+            gap: 5px;
+            margin-right: 10px; /* Adiciona espaço entre as partes do nome */
+        }
+        .character-input {
+            width: 30px;
+            height: 40px;
+            text-align: center;
+            font-size: 1.2rem;
+            border: 1px solid #ced4da;
+            border-radius: 5px;
+        }
+        @media (max-width: 576px) {
+            .character-input {
+                width: 25px;
+                height: 35px;
+                font-size: 1rem;
+            }
+        }
+        .swal2-popup {
+            font-size: 0.8rem;
+        }
+        .share-text {
+            font-size: 0.9rem;
+            word-break: break-word;
+            white-space: pre-wrap;
+            text-align: center;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+        .character-input.revealed {
+            background-color: #d4edda;
+            color: #155724;
+            font-weight: bold;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="container">
+        <h1 class="text-center mb-4">Adivinhe o Personagem de Anime</h1>
+        <div v-if="!gameStarted">
+            <div class="mb-4">
+                <input v-model="searchAnime" type="text" class="form-control" placeholder="Digite o nome do anime para começar">
+            </div>
+            <div v-if="errorMessage" class="alert alert-danger mb-4" role="alert">
+                {{ errorMessage }}
+            </div>
+            <div class="text-center mb-4">
+                <button @click="getRandomAnime" class="btn btn-custom">Anime Aleatório</button>
+            </div>
+            <div v-if="animeOptions.length > 0" class="row row-cols-2 row-cols-md-3 g-4">
+                <div v-for="anime in animeOptions" :key="anime.mal_id" class="col">
+                    <div class="card h-100 anime-option" @click="selectAnime(anime)">
+                        <img :src="anime.images.jpg.image_url" :alt="anime.title" class="card-img-top">
+                        <div class="card-body">
+                            <h5 class="card-title text-truncate" :title="anime.title">{{ anime.title }}</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div v-else-if="!gameModeSelected" class="fade-in">
+            <h2 class="text-center mb-4">{{ selectedAnime.title }}</h2>
+            <p class="text-center">Quantos personagens você quer adivinhar?</p>
+            <div class="d-flex justify-content-center gap-3 mb-4">
+                <button @click="startGame(5)" class="btn btn-custom">5 Personagens</button>
+                <button @click="startGame(10)" class="btn btn-custom">10 Personagens</button>
+                <button @click="startGame('unlimited')" class="btn btn-custom">Até Errar</button>
+            </div>
+            <div class="text-center">
+                <button @click="backToAnimeSelection" class="btn btn-back">Voltar à Seleção de Anime</button>
+            </div>
+        </div>
+        <div v-else class="fade-in">
+            <h2 class="text-center mb-4">{{ selectedAnime.title }}</h2>
+            <div class="text-center mb-4">
+                <img :src="characterImage" alt="Personagem" class="img-fluid character-image" style="max-height: 300px;">
+            </div>
+            <div class="character-inputs">
+                <div v-for="(namePart, partIndex) in characterNameParts" :key="partIndex" class="name-part">
+                    <input
+                        v-for="(char, charIndex) in namePart"
+                        :key="`${partIndex}-${charIndex}`"
+                        v-model="characterNameParts[partIndex][charIndex]"
+                        @input="onInput(partIndex, charIndex)"
+                        @keydown.delete="onDelete(partIndex, charIndex)"
+                        class="character-input"
+                        :class="{ 'revealed': revealedChars[`${partIndex}-${charIndex}`] }"
+                        maxlength="1"
+                        ref="charInputs"
+                        :disabled="revealedChars[`${partIndex}-${charIndex}`]"
+                    >
+                </div>
+            </div>
+            <div class="text-center mt-3">
+                <button @click="checkGuess(false)" class="btn btn-primary me-2">Adivinhar</button>
+                <button @click="getHint" class="btn btn-secondary me-2">Dica</button>
+                <button @click="resetGame" class="btn btn-outline-secondary">Reiniciar</button>
+            </div>
+            <p class="text-center mt-3">{{ message }}</p>
+            <p class="text-center">Pontuação: {{ score }} / {{ totalCharacters }}</p>
+        </div>
+
+        <!-- Botão "Como Jogar" flutuante -->
+        <button class="btn btn-info how-to-play-btn" data-bs-toggle="modal" data-bs-target="#howToPlayModal">
+            Como Jogar
+        </button>
+
+        <!-- Modal "Como Jogar" -->
+        <div class="modal fade" id="howToPlayModal" tabindex="-1" aria-labelledby="howToPlayModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="howToPlayModalLabel">Como Jogar</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <ol>
+                            <li>Digite o nome de um anime na barra de pesquisa ou clique em "Anime Aleatório".</li>
+                            <li>Selecione o anime desejado entre as opções exibidas.</li>
+                            <li>Escolha quantos personagens você quer adivinhar: 5, 10 ou até errar.</li>
+                            <li>Uma imagem de um personagem do anime escolhido será mostrada.</li>
+                            <li>Tente adivinhar o nome do personagem e digite-o no campo de texto.</li>
+                            <li>Clique em "Adivinhar" para verificar se você acertou.</li>
+                            <li>Continue jogando até completar o número escolhido de personagens ou até errar.</li>
+                        </ol>
+                        <p>Divirta-se testando seu conhecimento sobre personagens de anime!</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                searchAnime: '',
+                animeOptions: [],
+                selectedAnime: null,
+                gameStarted: false,
+                gameModeSelected: false,
+                characterImage: '',
+                guess: '',
+                message: '',
+                searchTimeout: null,
+                score: 0,
+                totalCharacters: 0,
+                gameMode: null,
+                characterNameParts: [],
+                currentCharacter: null,
+                errorMessage: '',
+                usedCharacters: [],
+                availableCharacters: [],
+                isLoading: false,
+                minCharacters: 5,
+                currentRound: 0,
+                guessResults: [],
+                revealedChars: {},
+                hintCount: 0,
+                hintCounts: [],
+            },
+            watch: {
+                searchAnime: function(newVal) {
+                    clearTimeout(this.searchTimeout);
+                    this.searchTimeout = setTimeout(() => {
+                        this.searchAnimes();
+                    }, 300);
+                }
+            },
+            methods: {
+                showLoading(message = 'Carregando...') {
+                    this.isLoading = true;
+                    Swal.fire({
+                        title: message,
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
+                        willOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                },
+                hideLoading() {
+                    this.isLoading = false;
+                    Swal.close();
+                },
+                searchAnimes() {
+                    if (this.searchAnime.length > 2) {
+                        axios.get(`https://api.jikan.moe/v4/anime?q=${this.searchAnime}`)
+                            .then(response => {
+                                this.animeOptions = response.data.data.slice(0, 6);
+                            })
+                            .catch(error => {
+                                console.error('Erro ao buscar animes:', error);
+                            });
+                    } else {
+                        this.animeOptions = [];
+                    }
+                },
+                selectAnime(anime) {
+                    this.showLoading('Verificando personagens...');
+                    this.selectedAnime = anime;
+                    this.errorMessage = '';
+                    
+                    return axios.get(`https://api.jikan.moe/v4/anime/${anime.mal_id}/characters`)
+                        .then(response => {
+                            this.availableCharacters = response.data.data.map(char => char.character);
+                            if (this.availableCharacters.length >= this.minCharacters) {
+                                this.gameStarted = true;
+                                this.usedCharacters = [];
+                                this.animeOptions = [];
+                                this.searchAnime = '';
+                                this.hideLoading();
+                                return true;
+                            } else {
+                                this.selectedAnime = null;
+                                this.hideLoading();
+                                Swal.fire('Erro', 'Este anime não tem personagens suficientes para jogar.', 'error');
+                                return false;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Erro ao buscar personagens:', error);
+                            this.errorMessage = 'Ocorreu um erro ao buscar os personagens. Por favor, tente novamente.';
+                            this.selectedAnime = null;
+                            this.hideLoading();
+                            return false;
+                        });
+                },
+                getRandomAnime() {
+                    this.showLoading('Procurando um anime adequado...');
+                    const tryRandomAnime = () => {
+                        return axios.get('https://api.jikan.moe/v4/random/anime')
+                            .then(response => {
+                                const randomAnime = response.data.data;
+                                return this.selectAnime(randomAnime);
+                            })
+                            .then(isValid => {
+                                if (!isValid) {
+                                    return tryRandomAnime();
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Erro ao buscar anime aleatório:', error);
+                                return tryRandomAnime();
+                            });
+                    };
+
+                    tryRandomAnime()
+                        .then(() => {
+                            this.hideLoading();
+                        })
+                        .catch(error => {
+                            console.error('Erro ao buscar anime aleatório:', error);
+                            this.errorMessage = 'Ocorreu um erro ao buscar um anime aleatório. Por favor, tente novamente.';
+                            this.hideLoading();
+                        });
+                },
+                startGame(mode) {
+                    this.gameMode = mode;
+                    this.gameModeSelected = true;
+                    this.totalCharacters = mode === 'unlimited' ? Infinity : mode;
+                    this.currentRound = 0;
+                    this.guessResults = [];
+                    this.score = 0;
+                    this.loadCharacter();
+                },
+                loadCharacter() {
+                    this.showLoading('Carregando personagem...');
+                    if (this.currentRound >= this.totalCharacters) {
+                        this.hideLoading();
+                        this.finishGame();
+                        return;
+                    }
+
+                    this.getValidCharacter()
+                        .then(character => {
+                            this.currentCharacter = character;
+                            this.characterImage = character.images.jpg.image_url;
+                            const cleanName = character.name.replace(/,/g, '').trim();
+                            this.characterNameParts = cleanName.split(' ').map(part => Array(part.length).fill(''));
+                            this.revealedChars = {};
+                            this.hintCount = 0;
+                            console.log('Loaded character:', cleanName);
+                            console.log('Character name parts:', this.characterNameParts);
+                            this.$nextTick(() => {
+                                if (this.$refs.charInputs && this.$refs.charInputs.length > 0) {
+                                    this.$refs.charInputs[0].focus();
+                                }
+                                this.hideLoading();
+                            });
+                        })
+                        .catch(error => {
+                            console.error('Error loading character:', error);
+                            this.hideLoading();
+                            Swal.fire('Erro', 'Ocorreu um erro ao carregar o personagem. Por favor, tente novamente.', 'error');
+                        });
+                },
+                getValidCharacter() {
+                    return new Promise((resolve, reject) => {
+                        const tryCharacter = () => {
+                            if (this.availableCharacters.length === 0) {
+                                reject(new Error('No more characters available'));
+                                return;
+                            }
+
+                            const randomIndex = Math.floor(Math.random() * this.availableCharacters.length);
+                            const character = this.availableCharacters[randomIndex];
+
+                            // Verifica se a imagem do personagem é válida
+                            this.isImageValid(character.images.jpg.image_url)
+                                .then(isValid => {
+                                    if (isValid) {
+                                        this.availableCharacters.splice(randomIndex, 1);
+                                        this.usedCharacters.push(character);
+                                        resolve(character);
+                                    } else {
+                                        console.log('Invalid image, trying another character');
+                                        this.availableCharacters.splice(randomIndex, 1);
+                                        tryCharacter();
+                                    }
+                                })
+                                .catch(() => {
+                                    console.log('Error checking image, trying another character');
+                                    this.availableCharacters.splice(randomIndex, 1);
+                                    tryCharacter();
+                                });
+                        };
+
+                        tryCharacter();
+                    });
+                },
+                isImageValid(url) {
+                    return new Promise((resolve) => {
+                        const img = new Image();
+                        img.onload = () => resolve(true);
+                        img.onerror = () => resolve(false);
+                        img.src = url;
+                    });
+                },
+                onInput(partIndex, charIndex) {
+                    if (this.revealedChars[`${partIndex}-${charIndex}`]) {
+                        this.focusNextInput(partIndex, charIndex);
+                    } else {
+                        const currentPart = this.characterNameParts[partIndex];
+                        if (charIndex < currentPart.length - 1) {
+                            this.$nextTick(() => {
+                                const nextInput = this.$refs.charInputs[this.$refs.charInputs.findIndex(input => input === document.activeElement) + 1];
+                                if (nextInput) nextInput.focus();
+                            });
+                        } else if (partIndex < this.characterNameParts.length - 1) {
+                            this.$nextTick(() => {
+                                const nextPartFirstInput = this.$refs.charInputs[this.$refs.charInputs.findIndex(input => input === document.activeElement) + 1];
+                                if (nextPartFirstInput) nextPartFirstInput.focus();
+                            });
+                        }
+                    }
+                },
+                onDelete(partIndex, charIndex) {
+                    if (charIndex > 0 && this.characterNameParts[partIndex][charIndex] === '') {
+                        this.$nextTick(() => {
+                            const prevInput = this.$refs.charInputs[this.$refs.charInputs.findIndex(input => input === document.activeElement) - 1];
+                            if (prevInput) prevInput.focus();
+                        });
+                    } else if (charIndex === 0 && partIndex > 0) {
+                        this.$nextTick(() => {
+                            const prevPartLastInput = this.$refs.charInputs[this.$refs.charInputs.findIndex(input => input === document.activeElement) - 1];
+                            if (prevPartLastInput) prevPartLastInput.focus();
+                        });
+                    }
+                },
+                checkGuess(revealedByHints = false) {
+                    const guessedName = this.characterNameParts.map(part => part.join('')).join(' ').toLowerCase();
+                    const correctName = this.currentCharacter.name.replace(/,/g, '').trim().toLowerCase();
+                    const isCorrect = guessedName === correctName;
+
+                    console.log('Guessed name:', guessedName);
+                    console.log('Correct name:', correctName);
+                    console.log('Is correct:', isCorrect);
+                    console.log('Revealed by hints:', revealedByHints);
+
+                    if (isCorrect) {
+                        if (!revealedByHints) {
+                            this.score++;
+                            this.guessResults.push('✅');
+                        } else {
+                            this.guessResults.push('❌');
+                        }
+                    } else {
+                        this.guessResults.push('❌');
+                    }
+
+                    this.hintCounts.push(this.hintCount);
+                    this.currentRound++;
+
+                    Swal.fire({
+                        icon: isCorrect && !revealedByHints ? 'success' : 'error',
+                        title: isCorrect && !revealedByHints ? 'Correto!' : 'Incorreto',
+                        text: isCorrect && !revealedByHints
+                            ? 'Você acertou o nome do personagem!'
+                            : `O nome correto era ${this.currentCharacter.name.replace(/,/g, '').trim()}.`,
+                        confirmButtonText: 'Próximo personagem'
+                    }).then(() => {
+                        this.loadCharacter();
+                    });
+                },
+                finishGame() {
+                    const shareText = this.generateShareText();
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Jogo Finalizado!',
+                        html: `
+                            <p>Você acertou ${this.score} de ${this.totalCharacters} personagens!</p>
+                            <p>Compartilhe seu resultado:</p>
+                            <div class="share-text">${shareText}</div>
+                        `,
+                        confirmButtonText: 'Jogar Novamente',
+                        showCancelButton: true,
+                        cancelButtonText: 'Compartilhar',
+                        width: '90%',
+                        customClass: {
+                            container: 'swal-custom-container',
+                            popup: 'swal-custom-popup',
+                            content: 'swal-custom-content'
+                        }
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            this.resetGame();
+                        } else if (result.dismiss === Swal.DismissReason.cancel) {
+                            this.shareResult(shareText);
+                        }
+                    });
+                },
+                generateShareText() {
+                    const animeTitle = this.selectedAnime.title;
+                    const emojiResults = this.guessResults.join('');
+                    const hintInfo = this.hintCounts.map(count => count > 0 ? `💡${count}` : '').join('');
+                    return `Adivinhe o Personagem de Anime\n${animeTitle}\n${emojiResults}\n${hintInfo}\n${this.score}/${this.totalCharacters}`;
+                },
+                shareResult(text) {
+                    if (navigator.share) {
+                        navigator.share({
+                            title: 'Meu resultado no Adivinhe o Personagem de Anime',
+                            text: text
+                        }).catch(console.error);
+                    } else {
+                        // Fallback para copiar para a área de transferência
+                        navigator.clipboard.writeText(text).then(() => {
+                            Swal.fire('Copiado!', 'O resultado foi copiado para a área de transferência.', 'success');
+                        }, (err) => {
+                            console.error('Erro ao copiar: ', err);
+                        });
+                    }
+                },
+                resetGame() {
+                    this.gameStarted = false;
+                    this.gameModeSelected = false;
+                    this.searchAnime = '';
+                    this.selectedAnime = null;
+                    this.characterNameParts = [];
+                    this.message = '';
+                    this.animeOptions = [];
+                    this.score = 0;
+                    this.totalCharacters = 0;
+                    this.gameMode = null;
+                    this.usedCharacters = [];
+                    this.availableCharacters = [];
+                    this.currentRound = 0;
+                    this.guessResults = [];
+                    this.revealedChars = {};
+                    this.hintCount = 0;
+                    this.hintCounts = [];
+                },
+                backToAnimeSelection() {
+                    this.gameStarted = false;
+                    this.selectedAnime = null;
+                },
+                focusNextInput(partIndex, charIndex) {
+                    const inputs = this.$refs.charInputs;
+                    const currentIndex = inputs.findIndex(input => input === document.activeElement);
+                    const nextInput = inputs.slice(currentIndex + 1).find(input => !input.disabled);
+                    if (nextInput) {
+                        nextInput.focus();
+                    }
+                },
+                getHint() {
+                    console.log('Current character name:', this.currentCharacter.name);
+                    console.log('Character name parts:', this.characterNameParts);
+                    console.log('Revealed chars:', this.revealedChars);
+
+                    const unrevealedChars = this.characterNameParts.flatMap((part, partIndex) => 
+                        part.map((char, charIndex) => ({ partIndex, charIndex, char: this.currentCharacter.name.split(' ')[partIndex][charIndex] }))
+                    ).filter(({ partIndex, charIndex, char }) => {
+                        const isNotRevealed = !this.revealedChars[`${partIndex}-${charIndex}`];
+                        const isNotEmpty = char && char.trim() !== '';
+                        const isNotSpace = char !== ' ';
+                        console.log(`Char: ${char}, isNotRevealed: ${isNotRevealed}, isNotEmpty: ${isNotEmpty}, isNotSpace: ${isNotSpace}`);
+                        return isNotRevealed && isNotEmpty && isNotSpace;
+                    });
+
+                    console.log('Unrevealed chars:', unrevealedChars);
+
+                    if (unrevealedChars.length > 0) {
+                        const { partIndex, charIndex, char } = unrevealedChars[Math.floor(Math.random() * unrevealedChars.length)];
+                        console.log(`Revealing char: ${char} at position ${partIndex}-${charIndex}`);
+                        this.$set(this.revealedChars, `${partIndex}-${charIndex}`, true);
+                        this.$set(this.characterNameParts[partIndex], charIndex, char);
+                        this.hintCount++;
+
+                        if (this.isNameFullyRevealed()) {
+                            console.log('Name fully revealed by hints');
+                            this.checkGuess(true);
+                        }
+                    } else {
+                        console.log('No unrevealed chars found');
+                        Swal.fire('Sem mais dicas', 'Todas as letras já foram reveladas!', 'info');
+                    }
+                },
+
+                isNameFullyRevealed() {
+                    const isRevealed = this.characterNameParts.every((part, partIndex) =>
+                        part.every((char, charIndex) =>
+                            this.revealedChars[`${partIndex}-${charIndex}`] || char !== ''
+                        )
+                    );
+                    console.log('Is name fully revealed:', isRevealed);
+                    return isRevealed;
+                },
+
+                getAbsoluteIndex(partIndex, charIndex) {
+                    let absoluteIndex = 0;
+                    for (let i = 0; i < partIndex; i++) {
+                        absoluteIndex += this.characterNameParts[i].length + 1; // +1 for space
+                    }
+                    return absoluteIndex + charIndex;
+                },
+            }
+        });
+    </script>
+</body>
+</html>
